@@ -1,0 +1,96 @@
+---
+title: "happiness_EDA"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(corrgram)
+
+#Happiness 2015-2017 3년 모두 있는 나라
+Happiness_ <- read.csv("C:/Project/data/Happiness_Join_.csv", header = T, sep = ",")
+#Happiness 2015-2017 3년 모두 없는 나라
+Happiness_f <- read.csv("C:/Project/data/Happiness_Join_f.csv", header = T, sep = ",")
+
+Hap2015 <- Happiness_ %>% filter(Year == "2015")
+Hap2016 <- Happiness_ %>% filter(Year == "2016")
+Hap2017 <- Happiness_ %>% filter(Year == "2017")
+
+Happiness_$Continent <- ifelse(Happiness_$Region %in% c("Central and Eastern Europe", "Western Europe"), "Europe", 
+                            ifelse(Happiness_$Region %in% c("Eastern Asia", "Southeastern Asia", "Southern Asia"), "Asia",
+                                   ifelse(Happiness_$Region %in% c("Middle East and Northern Africa", "Sub-Saharan Africa", "South Africa"), "Africa",
+                                          ifelse(Happiness_$Region %in% c("North America"), "North America",
+                                                 ifelse(Happiness_$Region %in% c("Latin America and Caribbean"), "South America",
+                                                        ifelse(Happiness_$Region %in% c("Australia and New Zealand"), "Oceania", FALSE))))))
+
+head(Happiness_)
+
+#Correlation Matrix
+corrgram((Happiness_ %>% filter(Continent == "Africa"))[,c(5:12)], order=FALSE, upper.panel=panel.cor, main="Happiness Correlation for Africa")
+
+corrgram((Happiness_ %>% filter(Continent == "Asia"))[,c(5:12)], order=FALSE, upper.panel=panel.cor, main="Happiness Correlation for Asia")
+
+corrgram((Happiness_ %>% filter(Continent == "Europe"))[,c(5:12)], order=FALSE, upper.panel=panel.cor, main="Happiness Correlation for Europe")
+
+corrgram((Happiness_ %>% filter(Continent == "South America"))[,c(5:12)], order=FALSE, upper.panel=panel.cor, main="Happiness Correlation for South America")
+
+corrgram((Happiness_ %>% filter(Continent == "North America"))[,c(5:12)], order=FALSE, upper.panel=panel.cor, main="Happiness Correlation for North America")
+
+corrgram((Happiness_ %>% filter(Continent == "Oceania"))[,c(5:12)], order=FALSE, upper.panel=panel.cor, main="Happiness Correlation for Oceania")
+
+#Scattor plot with regression line
+ggplot(Happiness_, aes(x = Economy, y = Happiness_Score)) + 
+  geom_point(aes(color = Continent), size = 1.3, alpha = 0.9) +  
+  geom_smooth(aes(color = Continent, fill = Continent), 
+              method = "lm", fullrange = TRUE) +
+  facet_wrap(~Continent) +
+  theme_bw() + labs(title = "Scatter plot with regression line - Economy")
+
+ggplot(Happiness_, aes(x = Family, y = Happiness_Score)) + 
+  geom_point(aes(color = Continent), size = 1.3, alpha = 0.9) +  
+  geom_smooth(aes(color = Continent, fill = Continent), 
+              method = "lm", fullrange = TRUE) +
+  facet_wrap(~Continent) +
+  theme_bw() + labs(title = "Scatter plot with regression line - Family")
+
+ggplot(Happiness_, aes(x = Health, y = Happiness_Score)) + 
+  geom_point(aes(color = Continent), size = 1.3, alpha = 0.9) +  
+  geom_smooth(aes(color = Continent, fill = Continent), 
+              method = "lm", fullrange = TRUE) +
+  facet_wrap(~Continent) +
+  theme_bw() + labs(title = "Scatter plot with regression line - Health")
+
+ggplot(Happiness_, aes(x = Freedom, y = Happiness_Score)) + 
+  geom_point(aes(color = Continent), size = 1.3, alpha = 0.9) +  
+  geom_smooth(aes(color = Continent, fill = Continent), 
+              method = "lm", fullrange = TRUE) +
+  facet_wrap(~Continent) +
+  theme_bw() + labs(title = "Scatter plot with regression line - Freedom")
+
+ggplot(Happiness_, aes(x = Trust, y = Happiness_Score)) + 
+  geom_point(aes(color = Continent), size = 1.3, alpha = 0.9) +  
+  geom_smooth(aes(color = Continent, fill = Continent), 
+              method = "lm", fullrange = TRUE) +
+  facet_wrap(~Continent) +
+  theme_bw() + labs(title = "Scatter plot with regression line - Trust")
+
+ggplot(Happiness_, aes(x = Generosity, y = Happiness_Score)) + 
+  geom_point(aes(color = Continent), size = 1.3, alpha = 0.9) +  
+  geom_smooth(aes(color = Continent, fill = Continent), 
+              method = "lm", fullrange = TRUE) +
+  facet_wrap(~Continent) +
+  theme_bw() + labs(title = "Scatter plot with regression line - Generosity")
+
+ggplot(Happiness_, aes(x = Dystopia_Residual, y = Happiness_Score)) + 
+  geom_point(aes(color = Continent), size = 1.3, alpha = 0.9) +  
+  geom_smooth(aes(color = Continent, fill = Continent), 
+              method = "lm", fullrange = TRUE) +
+  facet_wrap(~Continent) +
+  theme_bw() + labs(title = "Scatter plot with regression line - Dystopia_Residual")
+```
+

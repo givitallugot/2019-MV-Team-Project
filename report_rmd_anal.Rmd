@@ -1,0 +1,137 @@
+---
+title: "report_rmd_anal"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###2017년 자료에 Continent 추가, Continent - Africa, Asia, Oceania, Europe, North America, South America
+```{r}
+library(dplyr)
+library(tidyverse)
+library(MASS)
+library(rgl)
+
+#이 두줄은 지우기
+Happiness_ <- read.csv("C:/Project/data/Happiness_Join_.csv", header = T, sep = ",")
+Hap2017 <- Happiness_ %>% filter(Year == "2017")
+
+Hap2017$Continent <- ifelse(Hap2017$Region %in% c("Central and Eastern Europe", "Western Europe"), "Europe", 
+                            ifelse(Hap2017$Region %in% c("Eastern Asia", "Southeastern Asia", "Southern Asia"), "Asia",
+                                   ifelse(Hap2017$Region %in% c("Middle East and Northern Africa", "Sub-Saharan Africa", "South Africa"), "Africa",
+                                          ifelse(Hap2017$Region %in% c("North America"), "North America",
+                                                 ifelse(Hap2017$Region %in% c("Latin America and Caribbean"), "South America",
+                                                        ifelse(Hap2017$Region %in% c("Australia and New Zealand"), "Oceania", FALSE))))))
+
+```
+
+###PCA - 2017년 자료 이용 
+```{r}
+S <- var(Hap2017[,c(6:12)])
+round(S, 2)
+R <- cor(Hap2017[,c(6:12)])
+round(R,2)
+
+PC.result <- princomp(Hap2017[,c(6:12)], cor = TRUE)
+summary(PC.result)
+PC.result$loadings
+screeplot(PC.result, type="lines")
+biplot(PC.result)
+#첫번째 Prin comp는 Dystopia_Residual을 제외한 overall을, 두 번째 Prin comp는 (Economy, Family, Health, Dystopia_Residual)와 (Freedom, Trust, Generosity)의 대비
+#평균 고유값 1을 넘는 comp1과 comp2를 선택
+```
+
+###CLUSTERING - Kmeans 2
+```{r}
+prin <- PC.result$scores[,c(1:2)]
+K <- kmeans(prin, centers = 2)
+CLUS <- data.frame(Rank = Hap2017$Happiness_Rank, Continent = Hap2017$Continent, prin, kmeans = factor(K$cluster))
+ggplot(CLUS, aes(Comp.1, Comp.2)) + geom_text(aes(label = Rank), size = 4) + geom_point(aes(color = kmeans), size =7, alpha=0.3) + labs(title = "Clustering - Kmeans 2")
+```
+
+###CLUSTERING - Kmeans 4
+```{r}
+prin <- PC.result$scores[,c(1:2)]
+K <- kmeans(prin, centers = 4)
+CLUS <- data.frame(Continent = Hap2017$Continent, prin, kmeans = factor(K$cluster))
+ggplot(CLUS, aes(Comp.1, Comp.2)) + geom_text(aes(label = Continent), size = 4) + geom_point(aes(color = kmeans), size =7, alpha=0.3) + labs(title = "Clustering - Kmeans 4")
+```
+
+#Discrimination Analysis
+```{r}
+set.seed(-7053)
+#2015-2017년도 합친 데이터셋 이용, 관측치수를 비슷하도록 Asia / Western Europe / Central and Easthern Europe / Latin America 만 비교
+Hap_Asia <- Happiness_[grep("Asia", Happiness_$Region),]
+Hap_Asia$index <- c(1:63)
+Hap_Asia$Region <- c("Asia")
+Hap_CE_Europe <- Happiness_[grep("Central and Eastern Europe", Happiness_$Region),]
+Hap_CE_Europe$index <- c(1:87)
+Hap_W_Europe <- Happiness_[grep("Western Europe", Happiness_$Region),]
+Hap_W_Europe$index <- c(1:63)
+Hap_L_America <- Happiness_[grep("Latin America", Happiness_$Region),]
+Hap_L_America$index <- c(1:63)
+
+#Traning set과 Test set 나누기
+Asia_r <- data.frame(index = c(sample(c(1:63), 10, replace = FALSE)))
+CE_Europe_r  <- data.frame(index = c(sample(c(1:87), 10, replace = FALSE)))
+W_Europe_r <- data.frame(index = c(sample(c(1:63), 10, replace = FALSE)))
+L_America_r <- data.frame(index = c(sample(c(1:63), 10, replace = FALSE)))
+
+Hap_Asia_Tr <- Hap_Asia[Hap_Asia$index[-c(Asia_r$index)], ]
+Hap_Asia_T <- inner_join(Hap_Asia, Asia_r, by = c("index" = "index"))
+
+Hap_CE_Europe_Tr <- Hap_CE_Europe[Hap_CE_Europe$index[-c(CE_Europe_r$index)], ]
+Hap_CE_Europe_T <- inner_join(Hap_CE_Europe, CE_Europe_r, by = c("index" = "index"))
+
+Hap_W_Europe_Tr <- Hap_W_Europe[Hap_W_Europe$index[-c(W_Europe_r$index)], ]
+Hap_W_Europe_T <- inner_join(Hap_W_Europe, W_Europe_r, by = c("index" = "index"))
+
+Hap_L_America_Tr <- Hap_L_America[Hap_L_America$index[-c(L_America_r$index)], ]
+Hap_L_America_T <- inner_join(Hap_L_America, L_America_r, by = c("index" = "index"))
+
+Hap_Tr <- rbind(Hap_Asia_Tr, Hap_CE_Europe_Tr, Hap_W_Europe_Tr, Hap_L_America_Tr)
+str(Hap_Tr)
+
+Hap_T <- rbind(Hap_Asia_T, Hap_CE_Europe_T, Hap_W_Europe_T, Hap_L_America_T)
+str(Hap_T)
+
+LDA.Result <- lda(Hap_Tr[,c(6:12)], Hap_Tr$Region)
+LDA.Predict <- predict(LDA.Result, Hap_Tr[,c(6:12)])
+P_Region <- LDA.Predict$class
+correct.rate <- mean(Hap_Tr$Region == P_Region) 
+error.rate <- mean(Hap_Tr$Region != P_Region)
+
+correct.rate
+error.rate
+
+#3D plot
+#Asia - 핑크 / CE europe - 하늘색 / W europe - 연두색 / Latin America and Caribbean - 노란색
+LDA.col <- ifelse(Hap_Tr$Region == P_Region & Hap_Tr$Region == "Asia", "#E287AA", 
+                  ifelse(Hap_Tr$Region == P_Region & Hap_Tr$Region == "Central and Eastern Europe", "#56B4E9", 
+                         ifelse(Hap_Tr$Region == P_Region & Hap_Tr$Region == "Western Europe", "#81C147",
+                                ifelse(Hap_Tr$Region == P_Region & Hap_Tr$Region == "Latin America and Caribbean", "#E69F00", "#000000"))))
+
+#plot3d(LDA.Predict$x, pch=18, size = 5, col = LDA.col)
+#그림 넣기
+
+#Test 데이터 분류율 확인
+LDA.Predict.T <- predict(LDA.Result, Hap_T[,c(6:12)])
+PT_Region <- LDA.Predict.T$class
+correct.rate.T <- mean(Hap_T$Region == PT_Region)
+error.rate.T <- mean(Hap_T$Region != PT_Region)
+correct.rate.T
+error.rate.T
+
+LDA.col.T <- ifelse(Hap_T$Region == PT_Region & Hap_T$Region == "Asia", "#E287AA", 
+                  ifelse(Hap_T$Region == PT_Region & Hap_T$Region == "Central and Eastern Europe", "#56B4E9", 
+                         ifelse(Hap_T$Region == PT_Region & Hap_T$Region == "Western Europe", "#81C147",
+                                ifelse(Hap_T$Region == PT_Region & Hap_T$Region == "Latin America and Caribbean", "#E69F00", "#000000"))))
+
+#plot3d(LDA.Predict.T$x, pch=18, size = 5, col = LDA.col.T)
+#그림 넣기
+```
+
+
+
